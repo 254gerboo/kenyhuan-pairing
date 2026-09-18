@@ -3,18 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>kenyahuan Pairing</title> 
+    <title>kenyahuan Pairing</title>
+    <style>
+        :root {
+            --bg-1: #0f172a;
+            --bg-2: #111827;
+            --bg-3: #312e81;
+            --card: rgba(15, 23, 42, 0.72);
+            --card-border: rgba(148, 163, 184, 0.25);
+            --text: #e2e8f0;
+            --muted: #cbd5e1;
+            --accent: #22d3ee;
+            --accent-strong: #7c3aed;
+            --success: #34d399;
+            --danger: #fca5a5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 40px 20px;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(34, 211, 238, 0.28), transparent 30%),
+                radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.28), transparent 30%),
+                linear-gradient(135deg, var(--bg-1), var(--bg-2), var(--bg-3));
+        }
+
+        .card {
+            width: min(100%, 540px);
+            margin: 0 auto;
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-radius: 18px;
+            box-shadow: 0 18px 50px rgba(15, 23, 42, 0.5);
+            padding: 28px;
+        }
+
+        h1 {
+            margin-top: 0;
+            text-align: center;
+            color: #f8fafc;
+            letter-spacing: 0.04em;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        label {
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        input {
+            padding: 12px 14px;
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.45);
+            color: var(--text);
+            font-size: 16px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
+        }
+
+        button {
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 10px 22px rgba(124, 58, 237, 0.35);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+        #pairingCode {
+            margin-top: 22px;
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            border-radius: 10px;
+            padding: 16px;
+            font-size: 18px;
+            min-height: 48px;
+            display: none;
+        }
+        .code-text {
+            font-weight: 700;
+            letter-spacing: 1px;
+            word-break: break-all;
+        }
+        .status {
+            margin-top: 12px;
+            color: #dc2626;
+            display: none;
+        }
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #6b7280;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
-    <h1>kenyahuan Pairing</h1> 
-    <form action="/requestPairingCode" method="post">
-        <label for="phoneNumber">Phone Number:</label>
-        <input type="text" id="phoneNumber" name="phoneNumber" required>
-        <button type="submit">Request Pairing Code</button>
-    </form>
-    <div id="pairingCode">
-        <!-- The pairing code will be displayed here -->
+    <div class="card">
+        <h1>kenyahuan Pairing</h1>
+
+        <form id="pairingForm">
+            <label for="phoneNumber">Phone Number</label>
+            <input type="text" id="phoneNumber" name="phoneNumber" placeholder="254712345678" required>
+            <button type="submit">Request Pairing Code</button>
+        </form>
+
+        <div id="pairingCode">
+            <div>Pairing code:</div>
+            <div class="code-text" id="codeText"></div>
+        </div>
+
+        <div id="status" class="status"></div>
     </div>
-    <footer>Reserved!</footer> 
+
+    <footer>Reserved!</footer>
+
+    <script>
+        const form = document.getElementById('pairingForm');
+        const codeBox = document.getElementById('pairingCode');
+        const codeText = document.getElementById('codeText');
+        const status = document.getElementById('status');
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+            status.style.display = 'none';
+            status.textContent = '';
+            codeBox.style.display = 'none';
+
+            try {
+                const response = await fetch('/requestPairingCode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ phoneNumber })
+                });
+
+                const text = await response.text();
+
+                if (!response.ok) {
+                    throw new Error(text.replace(/<[^>]*>/g, '').trim() || 'Failed to generate pairing code.');
+                }
+
+                const match = text.match(/<strong>(.*?)<\/strong>/s);
+                if (!match) {
+                    throw new Error('No pairing code was returned.');
+                }
+
+                codeText.textContent = match[1].trim();
+                codeBox.style.display = 'block';
+            } catch (err) {
+                status.textContent = err.message;
+                status.style.display = 'block';
+            }
+        });
+    </script>
 </body>
 </html>
